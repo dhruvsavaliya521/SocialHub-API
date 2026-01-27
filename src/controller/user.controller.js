@@ -216,11 +216,11 @@ const logoutUser = asyncHandler(async function (req, res) {
         .json(new ApiResponse(200, {}, "user logged out "))
 })
 
-// req.cookies.refreshToken.trim() || 
+// req.cookies.refreshToken.trim() || IMP
 const refreshAccessToken = asyncHandler(async function (req, res) {
 
-    const incomingrefreshToken = req.cookies.refreshToken.trim() || req.body.refreshToken.trim() ;
-    
+    const incomingrefreshToken = req.cookies.refreshToken.trim() || req.body.refreshToken.trim();
+
 
     if (!incomingrefreshToken) {
         throw new ApiError(401, "uneuthorize request ")
@@ -228,9 +228,9 @@ const refreshAccessToken = asyncHandler(async function (req, res) {
     try {
 
         const decodedToken = jwt.verify(incomingrefreshToken, process.env.REFRESH_TOKEN_SECRET)
-        
+
         const user = await User.findById(decodedToken?._id).select("+refreshToken");
-        
+
         // console.log(user);
         // console.log(user.refreshToken)
 
@@ -247,10 +247,10 @@ const refreshAccessToken = asyncHandler(async function (req, res) {
 
         // console.log("incoming:", JSON.stringify(incomingrefreshToken));
         // console.log("db:", JSON.stringify(user.refreshToken));
-        
+
 
         // console.log(incomingrefreshToken);
-       
+
         if ((incomingrefreshToken !== user.refreshToken)) {
             throw new ApiError(401, "refresh token is expired ")
         }
@@ -462,7 +462,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 followerList: "$follower",
-                follwedList:  "$followed",
+                follwedList: "$followed",
                 isFollowed: {
                     $cond: {
                         if: { $in: [req?.user._id, "$follower.follower"] },
@@ -488,7 +488,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             )
         )
 });
-
 
 const getWatchHistory = asyncHandler(async (req, res) => {
 
@@ -546,6 +545,170 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
 });
 
+
+
+const getPostlistofown = asyncHandler(async function (req, res) {
+
+    const list = await User.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "posts",
+                localField: "_id",
+                foreignField: "owner",
+                as: "postList"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "post not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].postList,
+            "users post list fetched succesfully "
+        ))
+})
+
+const getPostlistofOtherUser = asyncHandler(async function (req, res) {
+    const { user_id } = req.body
+    if (!user_id) {
+        throw new ApiError(400, "plese give user id ")
+    }
+    if (!mongoose.isValidObjectId(user_id)) {
+        throw new ApiError(400, "Invalid user id");
+    }
+
+    const list = await User.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(user_id)
+            }
+        },
+        {
+            $lookup: {
+                from: "posts",
+                localField: "_id",
+                foreignField: "owner",
+                as: "postList"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "post not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].postList,
+            "users post list fetched succesfully "
+        ))
+})
+
+
+const getLikedPostlist = asyncHandler(async function (req, res) {
+    // const { post_id } = req.body
+
+    // if (!post_id) {
+    //     throw new ApiError(400, "plese give post id ")
+    // }
+    // if (!mongoose.isValidObjectId(post_id)) {
+    //     throw new ApiError(400, "Invalid post id");
+    // }
+
+    const list = await User.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "likedBy",
+                as: "likes"
+            }
+        },
+        {
+            $lookup: {
+                from: "posts",
+                localField: "likes.post",
+                foreignField: "_id",
+                as: "likedPosts"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "post not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].likedPosts,
+            "liked post list fetched succesfully "
+        ))
+})
+
+const getSavedPostlist = asyncHandler(async function (req, res) {
+
+
+
+
+})// need to make new schema 
+
+const getCommentlist = asyncHandler(async function (req, res) {
+    const list = await User.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "commentBy",
+                as: "comments"
+            }
+        },
+        {
+            $lookup: {
+                from: "posts",
+                localField: "comments.post",
+                foreignField: "_id",
+                as: "commentedPosts"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "post not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].commentedPosts,
+            "commented post list fetched succesfully "
+        ))
+
+
+
+})
+
+
 export {
     registerUser,
     loginUser,
@@ -557,7 +720,12 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    getPostlistofown,
+    getPostlistofOtherUser,
+    getLikedPostlist,
+    getSavedPostlist,
+    getCommentlist
 }
 
 
@@ -587,15 +755,15 @@ export {
 // check for uniquneess
 // deal with images and files
 // create new object and save in db
-// send status code or message and responce (remove password ) 
+// send status code or message and responce (remove password )
 
 
 
 
-/// post 
+/// post
 // follower--|
-//           |-> aggregate pipeline  
-// likes-----|  
-// comments--| (with extra field message ) 
-// posts 
+//           |-> aggregate pipeline
+// likes-----|
+// comments--| (with extra field message )
+// posts
 // follower and followed list 

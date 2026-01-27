@@ -5,7 +5,6 @@ const postSchema = new Schema(
     {
         file: {
             type: String, //cloudinary url
-            required: true
         },
         caption: {
             type: String,
@@ -37,6 +36,20 @@ const postSchema = new Schema(
         timestamps: true
     }
 )
+
+/**
+ * Custom validation:
+ * Either file OR caption must be present
+ */
+postSchema.pre("validate", function (next) {
+  if (!this.file && !this.caption) {
+    this.invalidate(
+      "file",
+      "Either file or caption is required"
+    );
+  }
+  next();
+});
 
 postSchema.plugin(mongooseAggregatePaginate)
 

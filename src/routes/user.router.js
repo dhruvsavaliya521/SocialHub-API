@@ -10,7 +10,12 @@ import {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    getPostlistofown,
+    getPostlistofOtherUser,
+    getLikedPostlist,
+    getSavedPostlist,
+    getCommentlist
 } from "../controller/user.controller.js";
 
 import {upload} from "../middleware/multer.middleware.js"
@@ -46,6 +51,12 @@ router.route("/update-user-avatar").patch(verifyJWT, upload.single("avatar"),upd
 router.route("/update-user-cover-image").patch(verifyJWT,upload.single("coverImage"), updateUserCoverImage)
 router.route("/getchannal").get(verifyJWT, getUserChannelProfile)
 router.route("/history").get(verifyJWT, getWatchHistory)
+router.route("/postlist/own").get(verifyJWT, getPostlistofown)
+router.route("/postlist/other/:userId").get(verifyJWT, getPostlistofOtherUser)
+router.route("/postlist/liked").get(verifyJWT, getLikedPostlist)
+router.route("/postlist/saved").get(verifyJWT, getSavedPostlist)
+router.route("/comments").get(verifyJWT, getCommentlist)
+
 
 
 

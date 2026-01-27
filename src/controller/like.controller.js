@@ -5,7 +5,6 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js"
 import {Like} from "../models/like.model.js"
-import { Tweet } from "../models/tweet.model.js";
 
 
 
@@ -230,6 +229,4 @@ const deleteLike = asyncHandler(async function (req, res) {
 
 export{addLikeonPost,addLikeoncomment,addLikeontweet,deleteLike}
 
-
-// unlike functions
 // like list on post or tweet 

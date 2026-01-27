@@ -5,7 +5,6 @@ import { Post } from "../models/post.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js"
-import { Tweet } from "../models/tweet.model.js";
 
 
 
@@ -166,7 +165,7 @@ const addComentoncomment = asyncHandler(async function (req, res) {
 
 const deleteComment = asyncHandler(async function (req, res) {
     let { commentId } = req.params;
-    commentId = commentId?.trim();  
+    commentId = commentId?.trim();
     if (!commentId) {
         throw new ApiError(400, "Comment id is required");
     }
@@ -177,17 +176,114 @@ const deleteComment = asyncHandler(async function (req, res) {
     //check if the user is the owner of the comment
     if (comment.commentBy.toString() !== req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to delete this comment");
-    }   
-    await Comment.findByIdAndDelete(commentId); 
+    }
+    await Comment.findByIdAndDelete(commentId);
     return res
         .status(200)
         .json(
             new ApiResponse(200, null, "Comment deleted successfully")
-        );          
+        );
 });
 
+const commentReplyList = asyncHandler(async function (req, res) {
+    const { comment_id } = req.body
+    if (!comment_id) {
+        throw new ApiError(400, "plese give comment id ")
+    }
+    if (!mongoose.isValidObjectId(comment_id)) {
+        throw new ApiError(400, "Invalid comment id");
+    }
 
-export{addComentonPost,addComentontweet,addComentoncomment,deleteComment}
+    const list = await Comment.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(comment_id)
+            }
+        },
+        {
+            $lookup: {
+                from: "comments",
+                localField: "_id",
+                foreignField: "comment",
+                as: "commentReplies"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "Comment not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].commentReplies,
+            "comment replies fetched succesfully "
+        ))
+})
+
+const getComment = asyncHandler(async function (req, res) {
+
+    const { comment_id } = req.body
+    if (!comment_id) {
+        throw new ApiError(400, "plese give comment id ")
+    }
+    if (!mongoose.isValidObjectId(comment_id)) {
+        throw new ApiError(400, "Invalid comment id");
+    }
+
+
+    const comment = await Comment.findById(comment_id)
+
+    if (!comment) {
+        throw new ApiError(404, "comment does not exits ")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, comment, "comment fetched successfully"))
+
+
+})
+
+const commentLikesList = asyncHandler(async function (req, res) {
+    const { comment_id } = req.body
+    if (!comment_id) {
+        throw new ApiError(400, "plese give comment id ")
+    }
+    if (!mongoose.isValidObjectId(comment_id)) {
+        throw new ApiError(400, "Invalid comment id");
+    }
+
+    const list = await Comment.aggregate([
+        {
+            $match: {
+                "_id": new mongoose.Types.ObjectId(comment_id)
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+                as: "commentLikes"
+            }
+        }
+    ])
+
+    if (!list.length) {
+        throw new ApiError(404, "Comment not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,
+            list[0].commentLikes,
+            "comment likes list fetched succesfully "
+        ))
+})
+
+export { addComentonPost, addComentontweet, addComentoncomment, deleteComment ,commentReplyList ,getComment , commentLikesList }
 
 
 //get comment list or perticular comment on post anywhere 
